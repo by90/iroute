@@ -1,249 +1,319 @@
-import 'package:flutter/material.dart';
-// import 'app/app.dart';
-// import 'app/scaffold.dart';
-import 'book/app.dart';
+import 'dart:async';
 
-void main() {
-  //runApp(MyApp(scaffold: MyScaffold()));
-  runApp(BooksApp());
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+main() => runApp(App());
+
+class App extends StatelessWidget {
+  final MainRouterDelegate mainRouterDelegate = MainRouterDelegate();
+  final MainRouteInformationParser mainRouteInformationParser =
+      MainRouteInformationParser();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'Codelessly',
+      routerDelegate: mainRouterDelegate,
+      routeInformationParser: mainRouteInformationParser,
+      debugShowCheckedModeBanner: false,
+    );
+  }
 }
 
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/material.dart';
+/// The RouteDelegate defines application specific behaviors of how the router
+/// learns about changes in the application state and how it responds to them.
+/// It listens to the RouteInformation Parser and the app state and builds the Navigator with
+/// the current list of pages (immutable object used to set navigator's history stack).
+class MainRouterDelegate extends RouterDelegate<String>
+    with ChangeNotifier, PopNavigatorRouterDelegateMixin<String> {
+  //This is the state of the navigator widget (in build method).
+  //GlobalKey<NavigatorState> get navigatorKey => GlobalKey<NavigatorState>();
 
-// // 该文件可独立运行
-// // 右击点击 create 'router_example.dart' -> OK
-// void main() => runApp(MyApp());
+  GlobalKey<NavigatorState> get navigatorKey =>
+      GlobalObjectKey<NavigatorState>(this);
 
-// class MyApp extends StatefulWidget {
-//   @override
-//   _MyAppState createState() => _MyAppState();
-// }
+  /// Internal backstack and pages representation.
+  List<String> _mainRoutes = [];
+  List<String> get mainRoutes => _mainRoutes;
 
-// class _MyAppState extends State<MyApp> {
-//   final delegate = MyRouteDelegate(
-//     onGenerateRoute: (RouteSettings settings) {
-//       return MaterialPageRoute(
-//         settings: settings,
-//         builder: (BuildContext context) {
-//           return MyHomePage(title: 'Route: ${settings.name}');
-//         },
-//       );
-//     },
-//   );
+  bool _canPop = true;
+  bool get canPop {
+    if (_canPop == false) return false;
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp.router(
-//       title: 'Flutter Demo',
-//       theme: ThemeData(
-//         primarySwatch: Colors.blue,
-//         visualDensity: VisualDensity.adaptivePlatformDensity,
-//       ),
-//       routeInformationParser: MyRouteParser(),
-//       routerDelegate: delegate,
-//     );
-//   }
-// }
+    return _mainRoutes.isNotEmpty;
+  }
 
-// class MyRouteParser extends RouteInformationParser<String> {
-//   @override
-//   Future<String> parseRouteInformation(RouteInformation routeInformation) {
-//     return SynchronousFuture(routeInformation.location!);
-//   }
+  set canPop(bool canPop) => _canPop = canPop;
 
-//   @override
-//   RouteInformation restoreRouteInformation(String configuration) {
-//     return RouteInformation(location: configuration);
-//   }
-// }
+  /// CurrentConfiguration detects changes in the route information
+  /// It helps complete the browser history and enables browser back and forward buttons.
+  String? get currentConfiguration =>
+      mainRoutes.isNotEmpty ? mainRoutes.last : null;
 
-// class MyRouteDelegate extends RouterDelegate<String>
-//     with PopNavigatorRouterDelegateMixin<String>, ChangeNotifier {
-//   final _stack = <String>[];
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+        key: navigatorKey,
+        pages: [
+          if (mainRoutes.isEmpty) MainPageBuilder(context, '/').page,
+          for (String path in mainRoutes) MainPageBuilder(context, path).page,
+        ],
+        onPopPage: (route, result) {
+          print('Pop Page');
+          if (!route.didPop(result)) {
+            return false;
+          }
+          if (canPop) {
+            pop();
+          }
+          return true;
+        });
+  }
 
-//   static MyRouteDelegate of(BuildContext context) {
-//     final delegate = Router.of(context).routerDelegate;
-//     assert(delegate is MyRouteDelegate, 'Delegate type must match');
-//     return delegate as MyRouteDelegate;
-//   }
+  @override
+  Future<void> setNewRoutePath(String path) async {
+    print('Set New Route Path: $path');
+    if (_canPop == false) return SynchronousFuture(null);
+    if (path == currentConfiguration) return SynchronousFuture(null);
+    _mainRoutes = _setNewRouteHistory(_mainRoutes, path);
+    print('Main Routes: $mainRoutes');
+    notifyListeners();
+    return SynchronousFuture(null);
+  }
 
-//   MyRouteDelegate({
-//     required this.onGenerateRoute,
-//   });
+  @override
+  Future<bool> popRoute() {
+    print('Pop Route');
+    return super.popRoute();
+  }
 
-//   final RouteFactory onGenerateRoute;
+  /// Updates route path history.
+  ///
+  /// In a browser, forward and backward navigation
+  /// is indeterminate and a custom path history stack
+  /// implementation is needed.
+  /// When a [newRoute] is added, check the existing [routes]
+  /// to see if the path already exists. If the path exists,
+  /// remove all path entries on top of the path.
+  /// Otherwise, add the new path to the path list.
+  List<String> _setNewRouteHistory(List<String> routes, String newRoute) {
+    List<String> pathsHolder = [];
+    pathsHolder.addAll(routes);
+    // Check if new path exists in history.
+    for (String path in routes) {
+      // If path exists, remove all paths on top.
+      if (path == newRoute) {
+        int index = routes.indexOf(path);
+        int count = routes.length;
+        for (var i = index; i < count - 1; i++) {
+          pathsHolder.removeLast();
+        }
+        return pathsHolder;
+      }
+    }
 
-//   @override
-//   GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+    // Add new path to history.
+    pathsHolder.add(newRoute);
 
-//   @override
-//   String? get currentConfiguration => _stack.isNotEmpty ? _stack.last : null;
+    return pathsHolder;
+  }
 
-//   List<String> get stack => List.unmodifiable(_stack);
+  void push(String path) {
+    //assert(path != null);
+    _mainRoutes.add(path);
+    notifyListeners();
+  }
 
-//   void push(String newRoute) {
-//     _stack.add(newRoute);
-//     notifyListeners();
-//   }
+  void pop() {
+    _mainRoutes.removeLast();
+    notifyListeners();
+  }
+}
 
-//   void remove(String routeName) {
-//     _stack.remove(routeName);
-//     notifyListeners();
-//   }
+/// The RouteInformationParser takes the RouteInformation
+/// from a RouteInformationProvider and parses it into a user-defined data type.
+class MainRouteInformationParser extends RouteInformationParser<String> {
+  @override
+  Future<String> parseRouteInformation(RouteInformation routeInformation) {
+    return SynchronousFuture(routeInformation.location!);
+  }
 
-//   @override
-//   Future<void> setInitialRoutePath(String configuration) {
-//     return setNewRoutePath(configuration);
-//   }
+  @override
+  RouteInformation restoreRouteInformation(String configuration) {
+    return RouteInformation(location: configuration);
+  }
+}
 
-//   @override
-//   Future<void> setNewRoutePath(String configuration) {
-//     _stack
-//       ..clear()
-//       ..add(configuration);
-//     return SynchronousFuture<void>(null);
-//   }
+// class String {
+//   final String? name;
+//   final Uri? uri;
+//   final dynamic data;
+//   final Object? state;
 
-//   bool _onPopPage(Route<dynamic> route, dynamic result) {
-//     if (_stack.isNotEmpty) {
-//       if (_stack.last == route.settings.name) {
-//         _stack.remove(route.settings.name);
-//         notifyListeners();
+//   const String(
+//       {@required this.name, @required this.uri, this.data, this.state});
+
+//   factory String.home() => String(name: 'home', uri: Uri.parse('/'));
+
+//   factory String.unknown() =>
+//       String(name: 'unknown', uri: Uri.parse('/unknown'));
+
+//   factory String.project() =>
+//       String(name: 'project', uri: Uri.parse('/project'));
+
+//   factory String.parse(Uri uri) {
+//     if (uri.pathSegments.isEmpty) {
+//       return String.home();
+//     }
+
+//     if (uri.pathSegments.length == 1) {
+//       if (uri.pathSegments[0] == 'project') {
+//         return String.project();
 //       }
 //     }
-//     return route.didPop(result);
+
+//     return String.unknown();
 //   }
 
 //   @override
-//   Widget build(BuildContext context) {
-//     print('${describeIdentity(this)}.stack: $_stack');
-//     return Navigator(
-//       key: navigatorKey,
-//       onPopPage: _onPopPage,
-//       pages: [
-//         for (final name in _stack)
-//           MyPage(
-//             key: ValueKey(name),
-//             name: name,
-//           ),
-//       ],
-//     );
-//   }
-// }
-
-// class MyPage extends Page {
-//   const MyPage({
-//     LocalKey? key,
-//     String? name,
-//   }) : super(
-//           key: key,
-//           name: name,
-//         );
-
-//   Route createRoute(BuildContext context) {
-//     return MaterialPageRoute(
-//       settings: this,
-//       builder: (BuildContext context) {
-//         return MyHomePage(title: 'Route: ${name!}');
-//       },
-//     );
-//   }
-// }
-
-// class MyHomePage extends StatefulWidget {
-//   MyHomePage({Key? key, this.title}) : super(key: key);
-
-//   final String? title;
+//   bool operator ==(Object other) => other is String && other.uri == uri;
 
 //   @override
-//   _MyHomePageState createState() => _MyHomePageState();
+//   int get hashCode => uri.hashCode;
 // }
 
-// class _MyHomePageState extends State<MyHomePage> {
-//   static int _counter = 0;
+class MainPageBuilder {
+  final BuildContext context;
+  final String homeRoutePath;
 
-//   void _showDialog() {
-//     showDialog(
-//       context: context,
-//       builder: (BuildContext context) {
-//         return AlertDialog(
-//           content: Text('Is this being displayed?'),
-//           actions: [
-//             TextButton(
-//               onPressed: () => Navigator.of(context).pop(false),
-//               child: Text('NO'),
-//             ),
-//             TextButton(
-//               onPressed: () => Navigator.of(context).pop(true),
-//               child: Text('YES'),
-//             ),
-//           ],
-//         );
-//       },
-//     );
-//   }
+  MainPageBuilder(this.context, this.homeRoutePath);
 
-//   void _removeLast() {
-//     final delegate = MyRouteDelegate.of(context);
-//     final stack = delegate.stack;
-//     if (stack.length > 2) {
-//       delegate.remove(stack[stack.length - 2]);
-//     }
-//   }
+  dynamic get page {
+    switch (homeRoutePath) {
+      case '/':
+        return MaterialPage(
+          key: ValueKey('home'),
+          name: '/',
+          child: HomePage(),
+        );
+      case '/project':
+        return MaterialPage(
+          key: ValueKey('projects'),
+          name: homeRoutePath,
+          child: ProjectsPage(),
+        );
+      default:
+        return MaterialPage(
+          key: ValueKey('unknown'),
+          name: homeRoutePath,
+          child: Scaffold(
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.black,
+              alignment: Alignment.center,
+              child:
+                  Text('Unknown Page', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+        );
+    }
+  }
+}
 
-//   void _incrementCounter() {
-//     setState(() {
-//       _counter++;
-//     });
-//     MyRouteDelegate.of(context).push('Route$_counter');
-//   }
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text(widget.title!),
-//       ),
-//       body: Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: <Widget>[
-//             Text(
-//               'You have pushed the button this many times:',
-//             ),
-//             Text(
-//               '$_counter',
-//               style: Theme.of(context).textTheme.headline4,
-//             ),
-//           ],
-//         ),
-//       ),
-//       floatingActionButton: Row(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           FloatingActionButton(
-//             heroTag: 'dialog',
-//             onPressed: _showDialog,
-//             tooltip: 'Show dialog',
-//             child: Icon(Icons.message),
-//           ),
-//           SizedBox(width: 12.0),
-//           FloatingActionButton(
-//             heroTag: 'remove',
-//             onPressed: _removeLast,
-//             tooltip: 'Remove last',
-//             child: Icon(Icons.delete),
-//           ),
-//           SizedBox(width: 12.0),
-//           FloatingActionButton(
-//             heroTag: 'add',
-//             onPressed: _incrementCounter,
-//             tooltip: 'Increment',
-//             child: Icon(Icons.add),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+class _HomePageState extends State<HomePage> {
+  int counter = 0;
+  @override
+  void initState() {
+    super.initState();
+    print('Init Home Page');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.amber,
+        alignment: Alignment.center,
+        child: Column(
+          children: [
+            Text('Home Page', style: TextStyle(color: Colors.white)),
+            Text('Counter: $counter', style: TextStyle(color: Colors.white)),
+            ElevatedButton(
+                onPressed: () {
+                  counter += 1;
+                  setState(() {});
+                },
+                child: Text('Increment Counter')),
+            ElevatedButton(
+                onPressed: () {
+                  (Router.of(context).routerDelegate as MainRouterDelegate)
+                      .push('/project');
+                },
+                child: Text('Open Projects')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProjectsPage extends StatefulWidget {
+  @override
+  _ProjectsPageState createState() => _ProjectsPageState();
+}
+
+class _ProjectsPageState extends State<ProjectsPage> {
+  int counter = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    print('Init Projects Page');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.pinkAccent,
+        alignment: Alignment.center,
+        child: Column(
+          children: [
+            Text('Projects Page', style: TextStyle(color: Colors.white)),
+            Text('Counter: $counter', style: TextStyle(color: Colors.white)),
+            ElevatedButton(
+                onPressed: () {
+                  counter += 1;
+                  setState(() {});
+                },
+                child: Text('Increment Counter')),
+            Padding(padding: EdgeInsets.only(bottom: 8)),
+            ElevatedButton(
+                onPressed: () =>
+                    (Router.of(context).routerDelegate as MainRouterDelegate)
+                        .pop(),
+                child: Text('Back')),
+            Padding(padding: EdgeInsets.only(bottom: 8)),
+            ElevatedButton(
+                onPressed: () =>
+                    (Router.of(context).routerDelegate as MainRouterDelegate)
+                        .push('/'),
+                child: Text('Open Home')),
+          ],
+        ),
+      ),
+    );
+  }
+}
