@@ -1,5 +1,3 @@
-//import 'dart:js';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'myRouteObserver.dart';
@@ -102,9 +100,24 @@ class MyRouteDelegate extends RouterDelegate<String>
               .push('/book/${Book.getIdByBook(book, books)}');
           MyRouteDelegate.of(context).notifyListeners();
         }),
-    '/book/:id': (context) => BookDetailsScreen(
-        book: books[Book.getIdFromUrl(
-            MyRouteDelegate.of(context).currentConfiguration)!]),
+
+    //这里,不能用当前的路径，返回根目录时，进入到这里然后回去了
+    '/book/:id': (context) {
+      if (MyRouteDelegate.of(context)
+          .currentConfiguration!
+          .startsWith('/book/')) {
+        print(
+            'now url is /book/:id,currentConfiguration=${MyRouteDelegate.of(context).currentConfiguration!}');
+
+        return BookDetailsScreen(
+            book: books[Book.getIdFromUrl(
+                MyRouteDelegate.of(context).currentConfiguration)!]);
+      } else {
+        print('now enter UnknowScreen!');
+        return UnknownScreen();
+      }
+    },
+    '/404': (context) => UnknownScreen()
   };
 
   static MyRouteDelegate of(BuildContext context) {
@@ -144,6 +157,7 @@ class MyRouteDelegate extends RouterDelegate<String>
 
   @override
   Future<void> setNewRoutePath(String configuration) {
+    //这里完全清除stack什么意思
     _stack
       ..clear()
       ..add(configuration);
@@ -151,13 +165,25 @@ class MyRouteDelegate extends RouterDelegate<String>
   }
 
   bool _onPopPage(Route<dynamic> route, dynamic result) {
+    if (!route.didPop(result)) {
+      return false;
+    }
+    print('onpop:${route.settings.name}');
+
+    //notify here,if not,the adress in browser will not update
+
     if (_stack.isNotEmpty) {
+      //这时已经完成pop，但需要将前一url删掉
       if (_stack.last == route.settings.name) {
         _stack.remove(route.settings.name);
+        print(
+            'onpop:removed settings.name ${route.settings.name} now currentConfiguration=$currentConfiguration');
+
+        //唯有如此，才能改变浏览器地址
         notifyListeners();
       }
     }
-    return route.didPop(result);
+    return true;
   }
 
   @override

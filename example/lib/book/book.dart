@@ -5,6 +5,9 @@ class Book {
   Book(this.title, this.author);
 
   static int? getIdFromUrl(String? path) {
+    //这里有问题
+    //scaffold pop的时候，应返回到/，但这里仍然执行了，pathSegments[1]越界
+    print('path=$path');
     final uri = Uri.parse(path!);
     return int.tryParse(uri.pathSegments[1]);
   }
