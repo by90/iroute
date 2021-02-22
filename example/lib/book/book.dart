@@ -4,8 +4,8 @@ class Book {
 
   Book(this.title, this.author);
 
-  static int? getIdFromUrl(String path) {
-    final uri = Uri.parse(path);
+  static int? getIdFromUrl(String? path) {
+    final uri = Uri.parse(path!);
     return int.tryParse(uri.pathSegments[1]);
   }
 
