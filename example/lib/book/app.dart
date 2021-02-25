@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'route.dart';
+import 'package:iroute/iroute.dart';
+
+import 'routes.dart';
 
 class BooksApp extends StatefulWidget {
   @override
@@ -7,7 +9,7 @@ class BooksApp extends StatefulWidget {
 }
 
 class _BooksAppState extends State<BooksApp> {
-  final MainRouterDelegate mainRouterDelegate = MainRouterDelegate();
+  final IRouterDelegate mainRouterDelegate = IRouterDelegate(routes: routes);
   final MainRouteInformationParser mainRouteInformationParser =
       MainRouteInformationParser();
   @override

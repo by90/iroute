@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'book.dart';
 
 class BookDetailsScreen extends StatelessWidget {
-  final Book book;
+  late final Book book;
+  final int id;
 
   BookDetailsScreen({
-    required this.book,
-  });
+    required this.id,
+  }) : this.book = books[id];
 
   @override
   Widget build(BuildContext context) {

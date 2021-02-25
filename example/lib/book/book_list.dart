@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'book.dart';
+import 'package:iroute/iroute.dart';
 
 class BooksListScreen extends StatelessWidget {
-  final List<Book> books;
-  final ValueChanged<Book> onTapped;
+  //final List<Book> books;
+  //final ValueChanged<Book> onTapped;
 
-  BooksListScreen({
-    required this.books,
-    required this.onTapped,
-  });
+  BooksListScreen();
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +18,10 @@ class BooksListScreen extends StatelessWidget {
             ListTile(
               title: Text(book.title),
               subtitle: Text(book.author),
-              onTap: () => onTapped(book),
+              onTap: () {
+                IRouterDelegate.of(context)
+                    .push('/book/:iid=${Book.getIdByBook(book, books)}');
+              },
             )
         ],
       ),
