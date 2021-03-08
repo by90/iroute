@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iroute/iroute.dart';
 import 'book.dart';
 
 class BookDetailsScreen extends StatelessWidget {
@@ -27,6 +28,13 @@ class BookDetailsScreen extends StatelessWidget {
                 },
                 child: Text('Back'),
               ),
+              TextButton(
+                  onPressed: () {
+                    int nextId = id + 1;
+                    if (nextId > 2) nextId = 0;
+                    IRouterDelegate.of(context).push('/book/:iid=$nextId');
+                  },
+                  child: Text('Next'))
             ],
           ],
         ),
