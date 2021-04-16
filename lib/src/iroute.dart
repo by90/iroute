@@ -110,16 +110,16 @@ class IRouterDelegate extends RouterDelegate<String>
   Page buildPage(context, url) {
     if (url == this.defaultUrl)
       return MaterialPage(
-          key: ValueKey(url),
+          key: UniqueKey(),
           name: '/',
           child: this._getWidget(this.defaultUrl)!(
               context) //add argument like(id:1) here
           );
     if (url == this.unknowUrl)
       return MaterialPage(
-          key: ValueKey(url), name: url, child: this._getWidget(url)!(context));
+          key: UniqueKey(), name: url, child: this._getWidget(url)!(context));
     return MaterialPage(
-        key: ValueKey(url), name: url, child: _getWidget(url)!(context));
+        key: UniqueKey(), name: url, child: _getWidget(url)!(context));
   }
 
   @override
