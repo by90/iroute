@@ -61,18 +61,15 @@ class _NestedRouterDemoState extends State {
 
 //有关的，只有stack和index，这里没有处理index
 //由此？？？
-class BooksAppState extends ChangeNotifier {
-  String _appUrl;
-
-  BooksAppState() : _appUrl = '/';
-
-  String get appUrl => _appUrl;
-
-  set appUrl(String idx) {
-    _appUrl = idx;
-    notifyListeners();
-  }
-}
+// class BooksAppState extends ChangeNotifier {
+//   BooksAppState() : _appUrl = '/';
+//   String _appUrl;
+//   String get appUrl => _appUrl;
+//   set appUrl(String idx) {
+//     _appUrl = idx;
+//     notifyListeners();
+//   }
+// }
 
 //这是解析，很简单
 class BookRouteInformationParser extends RouteInformationParser<String> {
@@ -95,15 +92,22 @@ class BookRouterDelegate extends RouterDelegate<String>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin {
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  String _appUrl = '/';
+  String get appUrl => _appUrl;
+  set appUrl(String idx) {
+    _appUrl = idx;
+    notifyListeners();
+  }
+
   //这里创建了一个appstate？
-  BooksAppState appState = BooksAppState();
+  //BooksAppState = BooksAppState();
 
   BookRouterDelegate() : navigatorKey = GlobalKey() {
-    appState.addListener(notifyListeners); //这里监听？
+    //addListener(notifyListeners); //这里监听？
   }
 
   String get currentConfiguration {
-    return appState.appUrl;
+    return appUrl;
   }
 
   @override
@@ -115,7 +119,7 @@ class BookRouterDelegate extends RouterDelegate<String>
       //单个页面，是appShell
       pages: [
         MaterialPage(
-          child: AppShell(appState: appState),
+          child: AppShell(appUrl: appUrl), //传递到AppShell组件？
         ),
       ],
 
@@ -126,13 +130,13 @@ class BookRouterDelegate extends RouterDelegate<String>
         }
 
         //这里通过设定selectredBook，从而显示列表？
-        // if (appState.selectedBook != null) {
-        //   appState.selectedBook = null;
+        // if (selectedBook != null) {
+        //   selectedBook = null;
         // }
         print('onPopPage,route.settings.name=${route.settings.name}');
 
         //问题在这里??，route.settings.name是当前的url，所以无法返回
-        appState.appUrl = route.settings.name!;
+        _appUrl = route.settings.name!; //注意这里重绘制
         //因此需要控制page,
         //Navigator.of(context).pop();
 
@@ -146,7 +150,7 @@ class BookRouterDelegate extends RouterDelegate<String>
   @override
   Future setNewRoutePath(String path) async {
     print('setNewRoutePath:path=$path');
-    appState.appUrl = path; //这里来设定状态，但是我们已经notify了；
+    appUrl = path; //这里来设定状态，但是我们已经notify了；
   }
 }
 
@@ -154,10 +158,10 @@ class BookRouterDelegate extends RouterDelegate<String>
 class AppShell extends StatefulWidget {
   //这里是第二个appState，将状态存放在appShell组件里
   //根路由代理的appState，应该是处理newPath的
-  final BooksAppState appState;
+  final String appUrl;
 
   AppShell({
-    required this.appState,
+    required this.appUrl,
   });
 
   @override
@@ -173,7 +177,7 @@ class AppShellState extends State {
     super.initState();
 
     //此时，再初始化状态时，利用此状态创建路由代理
-    _routerDelegate = InnerRouterDelegate((widget as AppShell).appState);
+    _routerDelegate = InnerRouterDelegate((widget as AppShell).appUrl);
   }
 
   @override
@@ -181,7 +185,7 @@ class AppShellState extends State {
     super.didUpdateWidget(oldWidget);
 
     //当appState改变时，在这里，改变路由状态的appState
-    _routerDelegate!.appState = (widget as AppShell).appState;
+    _routerDelegate!.appUrl = (widget as AppShell).appUrl;
   }
 
   @override
@@ -195,7 +199,7 @@ class AppShellState extends State {
 
   @override
   Widget build(BuildContext context) {
-    var appState = (widget as AppShell).appState;
+    //var appUrl = (widget as AppShell).appUrl;
 
 // Claim priority, If there are parallel sub router, you will need
 // to pick which one should take priority;
@@ -213,10 +217,10 @@ class AppShellState extends State {
           BottomNavigationBarItem(
               icon: Icon(Icons.settings), label: 'Settings'),
         ],
-        currentIndex: 0, //appState.selectedIndex,
+        currentIndex: 0, //selectedIndex,
         onTap: (newIndex) {
-          appState.appUrl = newIndex == 0 ? '/' : '/settings';
-          //appState.selectedIndex = newIndex;
+          _routerDelegate!.appUrl = newIndex == 0 ? '/' : '/settings';
+          //selectedIndex = newIndex;
         },
       ),
     );
@@ -226,56 +230,53 @@ class AppShellState extends State {
 class InnerRouterDelegate extends RouterDelegate<String>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin {
   final GlobalKey<NavigatorState>? navigatorKey = GlobalKey();
-  BooksAppState get appState => _appState;
-  BooksAppState _appState;
-  set appState(BooksAppState value) {
-    if (value == _appState) {
-      return;
-    }
-    _appState = value;
-    notifyListeners(); //这里，通知刷新
+  String _appUrl;
+  String get appUrl => _appUrl;
+  set appUrl(String idx) {
+    _appUrl = idx;
+    notifyListeners();
   }
 
-  InnerRouterDelegate(this._appState);
+  InnerRouterDelegate(this._appUrl);
 
   @override
   Widget build(BuildContext context) {
     return Navigator(
       key: navigatorKey,
       pages: [
-        if (appState.appUrl == '/')
+        if (appUrl == '/')
           MaterialPage(
               child: BooksListScreen(
                 books: Book.books,
                 onTapped: _handleBookTapped,
               ),
-              key: ValueKey(appState.appUrl),
-              name: appState.appUrl),
-        if (appState.appUrl.startsWith('/post'))
+              key: ValueKey(appUrl),
+              name: appUrl),
+        if (appUrl.startsWith('/post'))
           MaterialPage(
-            name: appState.appUrl,
-            key: ValueKey(appState.appUrl),
+            name: appUrl,
+            key: ValueKey(appUrl),
             child: BookDetailsScreen(
-                book: Book.getBookById(Book.getIdFromUrl(appState.appUrl)!)!),
+                book: Book.getBookById(Book.getIdFromUrl(appUrl)!)!),
           ),
-        if (appState.appUrl == '/settings')
+        if (appUrl == '/settings')
           MaterialPage(
-            name: appState.appUrl,
+            name: appUrl,
             child: SettingsScreen(),
-            key: ValueKey(appState.appUrl),
+            key: ValueKey(appUrl),
           ),
       ],
       onPopPage: (route, result) {
         if (!route.didPop(result)) return false;
-//appState.selectedBook = null;
+//selectedBook = null;
         print('Inner! onPopPage,route.settings.name=${route.settings.name}');
 
         //问题在这里，route.settings.name是当前的url，所以无法返回
-        //appState.appUrl = route.settings.name!;
+        //appUrl = route.settings.name!;
         //因此需要控制page,
         //Navigator.of(context).pop();
 
-        appState.appUrl = route.settings.name!;
+        appUrl = route.settings.name!;
 
         //bug，不能返回，在这里通知？？？
         //notifyListeners();
@@ -293,7 +294,7 @@ class InnerRouterDelegate extends RouterDelegate<String>
   }
 
   void _handleBookTapped(book) {
-    appState.appUrl = '/post/${Book.getIdByBook(book as Book)}';
+    appUrl = '/post/${Book.getIdByBook(book as Book)}';
     notifyListeners();
   }
 }
