@@ -15,6 +15,29 @@ class Book {
   final String author;
 
   Book(this.title, this.author);
+
+  static final List books = [
+    Book('Stranger in a Strange Land', 'Robert A. Heinlein'),
+    Book('Foundation', 'Isaac Asimov'),
+    Book('Fahrenheit 451', 'Ray Bradbury'),
+  ];
+
+  static Book? getBookById(int id) {
+    if (id < 0 || id > books.length - 1) {
+      return null;
+    }
+    return books[id];
+  }
+
+  static int getIdByBook(Book book) {
+    if (!books.contains(book)) return 0;
+    return books.indexOf(book);
+  }
+
+  static int? getIdFromUrl(String path) {
+    final uri = Uri.parse(path);
+    return int.tryParse(uri.pathSegments[1]);
+  }
 }
 
 class NestedRouterDemo extends StatefulWidget {
@@ -36,14 +59,10 @@ class _NestedRouterDemoState extends State {
   }
 }
 
+//有关的，只有stack和index，这里没有处理index
+//由此？？？
 class BooksAppState extends ChangeNotifier {
   String _appUrl;
-
-  final List books = [
-    Book('Stranger in a Strange Land', 'Robert A. Heinlein'),
-    Book('Foundation', 'Isaac Asimov'),
-    Book('Fahrenheit 451', 'Ray Bradbury'),
-  ];
 
   BooksAppState() : _appUrl = '/';
 
@@ -53,25 +72,9 @@ class BooksAppState extends ChangeNotifier {
     _appUrl = idx;
     notifyListeners();
   }
-
-  Book? getBookById(int id) {
-    if (id < 0 || id > books.length - 1) {
-      return null;
-    }
-    return books[id];
-  }
-
-  int getIdByBook(Book book) {
-    if (!books.contains(book)) return 0;
-    return books.indexOf(book);
-  }
-
-  int? getIdFromUrl(String path) {
-    final uri = Uri.parse(path);
-    return int.tryParse(uri.pathSegments[1]);
-  }
 }
 
+//这是解析，很简单
 class BookRouteInformationParser extends RouteInformationParser<String> {
   @override
   Future<String> parseRouteInformation(
@@ -87,14 +90,16 @@ class BookRouteInformationParser extends RouteInformationParser<String> {
   }
 }
 
+//根路由代理
 class BookRouterDelegate extends RouterDelegate<String>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin {
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  //这里创建了一个appstate？
   BooksAppState appState = BooksAppState();
 
   BookRouterDelegate() : navigatorKey = GlobalKey() {
-    appState.addListener(notifyListeners);
+    appState.addListener(notifyListeners); //这里监听？
   }
 
   String get currentConfiguration {
@@ -103,13 +108,18 @@ class BookRouterDelegate extends RouterDelegate<String>
 
   @override
   Widget build(BuildContext context) {
+    //实际上就是一个Navigator
     return Navigator(
       key: navigatorKey,
+
+      //单个页面，是appShell
       pages: [
         MaterialPage(
           child: AppShell(appState: appState),
         ),
       ],
+
+      //这里是pop
       onPopPage: (route, result) {
         if (!route.didPop(result)) {
           return false;
@@ -132,6 +142,7 @@ class BookRouterDelegate extends RouterDelegate<String>
     );
   }
 
+  //由url生成新页面，这里只改变appState状态
   @override
   Future setNewRoutePath(String path) async {
     print('setNewRoutePath:path=$path');
@@ -141,6 +152,8 @@ class BookRouterDelegate extends RouterDelegate<String>
 
 // Widget that contains the AdaptiveNavigationScaffold
 class AppShell extends StatefulWidget {
+  //这里是第二个appState，将状态存放在appShell组件里
+  //根路由代理的appState，应该是处理newPath的
   final BooksAppState appState;
 
   AppShell({
@@ -152,17 +165,22 @@ class AppShell extends StatefulWidget {
 }
 
 class AppShellState extends State {
+  //这里的路由代理没有初始化，在initState初始化
   InnerRouterDelegate? _routerDelegate;
   ChildBackButtonDispatcher? _backButtonDispatcher;
 
   void initState() {
     super.initState();
+
+    //此时，再初始化状态时，利用此状态创建路由代理
     _routerDelegate = InnerRouterDelegate((widget as AppShell).appState);
   }
 
   @override
   void didUpdateWidget(covariant AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    //当appState改变时，在这里，改变路由状态的appState
     _routerDelegate!.appState = (widget as AppShell).appState;
   }
 
@@ -215,7 +233,7 @@ class InnerRouterDelegate extends RouterDelegate<String>
       return;
     }
     _appState = value;
-    notifyListeners();
+    notifyListeners(); //这里，通知刷新
   }
 
   InnerRouterDelegate(this._appState);
@@ -228,7 +246,7 @@ class InnerRouterDelegate extends RouterDelegate<String>
         if (appState.appUrl == '/')
           MaterialPage(
               child: BooksListScreen(
-                books: appState.books,
+                books: Book.books,
                 onTapped: _handleBookTapped,
               ),
               key: ValueKey(appState.appUrl),
@@ -238,8 +256,7 @@ class InnerRouterDelegate extends RouterDelegate<String>
             name: appState.appUrl,
             key: ValueKey(appState.appUrl),
             child: BookDetailsScreen(
-                book: appState
-                    .getBookById(appState.getIdFromUrl(appState.appUrl)!)!),
+                book: Book.getBookById(Book.getIdFromUrl(appState.appUrl)!)!),
           ),
         if (appState.appUrl == '/settings')
           MaterialPage(
@@ -276,7 +293,7 @@ class InnerRouterDelegate extends RouterDelegate<String>
   }
 
   void _handleBookTapped(book) {
-    appState.appUrl = '/post/${appState.getIdByBook(book as Book)}';
+    appState.appUrl = '/post/${Book.getIdByBook(book as Book)}';
     notifyListeners();
   }
 }
